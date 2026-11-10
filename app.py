@@ -33,30 +33,28 @@ def main():
 
         
         choice = input("\nSelect an option (1-6): ").strip()
-        choice = int(choice)
         
-        while choice not in [1, 2, 3, 4, 5, 6]:
+        while choice not in ["1", "2", "3", "4", "5", "6"]:
             print("[-] Invalid selection. Choose 1-6.")
             choice = input("\nSelect an option (1-6): ").strip()
-            choice = int(choice)
 
-        if choice == 1:
+        if choice == "1":
             browse()
                 
-        elif choice == 2:
+        elif choice == "2":
             findParts()
                 
-        elif choice == 3:
+        elif choice == "3":
             prodView()
                 
-        elif choice == 4:
+        elif choice == "4":
             addCart()
 
-        elif choice == 5:
-            DisTotal()
+        elif choice == "5":
+            disTotal()
 
-        elif choice == 6:
-            exit()
+        elif choice == "6":
+            print("Exited. Goodbye.")
             break
     return
 
@@ -148,7 +146,7 @@ def addCart():
 
     return
 
-def DisTotal():
+def disTotal():
     cart_id = input("Which cart would you like to see the total for?: ")        
     if not cart_id.isdigit():
         print("[-] Invalid cart ID. Must be an integer.")
@@ -156,10 +154,6 @@ def DisTotal():
     
     services.display_total(cart_id)
 
-
-def exit():
-    print("exit, goodbye")
-    return
  
 if __name__ == "__main__":
     main()
