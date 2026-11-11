@@ -68,7 +68,7 @@ def test_admin_add_product():
         price = 55.00,
         category_id = 1,
         brand_id = 1,
-        stock = 4
+        stock = 4,
         description = "Test description",
         install_instructions = "Test install instructions"
     )
