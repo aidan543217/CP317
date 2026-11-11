@@ -83,3 +83,62 @@ def get_cart_total(cart_id):
     subtotal = row["subtotal"]
     tax = round(subtotal * TAX_RATE)
     return {"subtotal_cents": subtotal, "tax_cents": tax, "total_cents": subtotal + tax}
+
+def _next_id(conn,table,pk_col):
+    row = conn.execute(f"SELECT COALESCE(MAX({pk_col}), 0) + 1 AS n FROM {table}").fetchone()
+    return row["n"]
+
+def create_product(name, price_cents, category_id, brand_id,
+                   stock=0, description=None, install_instructions=None,
+                   image_url=None, is_active=1):
+    """ADM-1: insert a new product listing."""
+    with get_connection() as conn:
+        new_id = _next_id(conn, "products", "product_id")
+        conn.execute(
+            """INSERT INTO products
+               (product_id, name, price_cents, category_id, brand_id, stock,
+                description, install_instructions, image_url, is_active)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (new_id, name, price_cents, category_id, brand_id, stock,
+             description, install_instructions, image_url, is_active))
+        return new_id
+
+def update_product(product_id, **fields):
+    """ADM-1: update any subset of product columns."""
+    allowed = {"name", "price_cents", "category_id", "brand_id", "stock",
+               "description", "install_instructions", "image_url", "is_active"}
+    sets, vals = [], []
+    for k, v in fields.items():
+        if k not in allowed:
+            raise ValueError(f"Field '{k}' cannot be updated")
+        sets.append(f"{k} = ?")
+        vals.append(v)
+    if not sets:
+        return False
+    vals.append(product_id)
+    with get_connection() as conn:
+        cur = conn.execute(
+            f"UPDATE products SET {', '.join(sets)} WHERE product_id = ?", vals)
+        return cur.rowcount > 0
+
+
+def delete_product(product_id):
+    """ADM-1: remove (soft-delete) a product listing."""
+    with get_connection() as conn:
+        cur = conn.execute(
+            "UPDATE products SET is_active = 0 WHERE product_id = ?", (product_id,))
+        return cur.rowcount > 0
+
+
+def get_all_products_admin():
+    """ADM-1: list every product (including inactive) for the admin table."""
+    sql = """
+        SELECT p.product_id, p.name, p.price_cents, p.stock, p.is_active,
+               c.name AS category, b.name AS brand
+        FROM products p
+        JOIN categories c ON c.category_id = p.category_id
+        LEFT JOIN brands b ON b.brand_id = p.brand_id
+        ORDER BY p.product_id
+    """
+    with get_connection() as conn:
+        return [dict(r) for r in conn.execute(sql)]
