@@ -29,14 +29,18 @@ def main():
         print("3. View Product Details (FR-2)")
         print("4. Add to cart (FR-3)")
         print("5. View current total (FR-3)")
-        print("6. Exit")
+        print("6. Admin: List All Products (FR-8)")
+        print("7. Admin: Add Product (FR-8)")
+        print("8. Admin: Edit Product (FR-8)")
+        print("9. Admin: Delete Product (FR-8)")
+        print("0. Exit")
 
         
-        choice = input("\nSelect an option (1-6): ").strip()
+        choice = input("\nSelect an option (0-9): ").strip()
         
-        while choice not in ["1", "2", "3", "4", "5", "6"]:
-            print("[-] Invalid selection. Choose 1-6.")
-            choice = input("\nSelect an option (1-6): ").strip()
+        while choice not in ["1", "2", "3", "4", "5", "6", "7", "8", "9"]:
+            print("[-] Invalid selection. Choose 0-9.")
+            choice = input("\nSelect an option (0-9): ").strip()
 
         if choice == "1":
             browse()
@@ -54,6 +58,18 @@ def main():
             disTotal()
 
         elif choice == "6":
+            adminListProducts()
+
+        elif choice == "7":
+            adminAddProduct()
+
+        elif choice == "8":
+            adminEditProduct()
+
+        elif choice == "9":
+            adminDeleteProduct()
+
+        elif choice == "0":
             print("Exited. Goodbye.")
             break
     return
@@ -154,6 +170,133 @@ def disTotal():
     
     services.display_total(cart_id)
 
- 
+def adminListProducts():
+    """FR-8: display all products (active + inactive) in a table."""
+    print("\n--- Admin: Product Management ---")
+    products = services.admin_list_products()
+    if not products:
+        print("No products in catalog.")
+        return
+    print(f"{'ID':<5}{'Name':<24}{'Price':<10}{'Stock':<7}{'Status':<10}{'Category':<15}Brand")
+    print("-" * 80)
+    for p in products:
+        print(f"{p['product_id']:<5}{p['name'][:23]:<24}"
+              f"{p['price_formatted']:<10}{p['stock']:<7}"
+              f"{p['status']:<10}{(p['category'] or '')[:14]:<15}"
+              f"{p['brand'] or 'N/A'}")
+
+def adminAddProduct():
+    """FR-8: prompt for required fields and create a listing."""
+    print("\n--- Admin: Add New Product ---")
+    name = input("Product name: ").strip()
+    price_input = input("Price ($, e.g., 129.99): ").strip()
+    cat_input = input("Category ID: ").strip()
+    brand_input = input("Brand ID: ").strip()
+    stock_input = input("Initial stock (default 0): ").strip() or "0"
+    desc = input("Description (optional): ").strip()
+    inst = input("Install instructions (optional): ").strip()
+
+    try:
+        price = float(price_input)
+        category_id = int(cat_input)
+        brand_id = int(brand_input)
+        stock = int(stock_input)
+    except ValueError:
+        print("[-] Invalid input. Price must be a number; IDs and stock must be integers.")
+        return
+
+    try:
+        new_id = services.admin_add_product(
+            name=name, price=price, category_id=category_id,
+            brand_id=brand_id, stock=stock, description=desc,
+            install_instructions=inst)
+        print(f"[+] Product created with ID {new_id}.")
+    except Exception as e:
+        print(f"[-] Could not create product: {e}")
+
+def adminEditProduct():
+    """FR-8: update chosen fields of an existing product."""
+    print("\n--- Admin: Edit Product ---")
+    pid_input = input("Product ID to edit: ").strip()
+    if not pid_input.isdigit():
+        print("[-] Invalid product ID.")
+        return
+    product_id = int(pid_input)
+
+    existing = services.get_product_details(product_id)
+    if not existing:
+        print("[-] Product not found.")
+        return
+    print(f"Editing: {existing['name']} ({existing['price_formatted']})")
+
+    fields = {}
+
+    new_name = input("New name (blank to keep): ").strip()
+    if new_name:
+        fields["name"] = new_name
+
+    new_price = input("New price in $ (blank to keep): ").strip()
+    if new_price:
+        try:
+            fields["price"] = float(new_price)
+        except ValueError:
+            print("[-] Invalid price."); return
+
+    new_stock = input("New stock (blank to keep): ").strip()
+    if new_stock:
+        try:
+            fields["stock"] = int(new_stock)
+        except ValueError:
+            print("[-] Invalid stock."); return
+
+    new_cat = input("New category ID (blank to keep): ").strip()
+    if new_cat:
+        if not new_cat.isdigit():
+            print("[-] Invalid category ID."); return
+        fields["category_id"] = int(new_cat)
+
+    new_brand = input("New brand ID (blank to keep): ").strip()
+    if new_brand:
+        if not new_brand.isdigit():
+            print("[-] Invalid brand ID."); return
+        fields["brand_id"] = int(new_brand)
+
+    new_desc = input("New description (blank to keep): ").strip()
+    if new_desc:
+        fields["description"] = new_desc
+
+    if not fields:
+        print("[*] No changes made.")
+        return
+
+    try:
+        ok = services.admin_edit_product(product_id, **fields)
+        print("[+] Product updated." if ok else "[-] Product not found.")
+    except Exception as e:
+        print(f"[-] Update failed: {e}")
+
+def adminDeleteProduct():
+    """FR-8: soft-delete a product listing after confirmation."""
+    print("\n--- Admin: Delete Product ---")
+    pid_input = input("Product ID to delete: ").strip()
+    if not pid_input.isdigit():
+        print("[-] Invalid product ID.")
+        return
+    product_id = int(pid_input)
+
+    existing = services.get_product_details(product_id)
+    if not existing:
+        print("[-] Product not found.")
+        return
+    print(f"You are about to remove: {existing['name']} ({existing['price_formatted']})")
+    confirm = input("Type 'yes' to confirm deletion: ").strip().lower()
+    if confirm != "yes":
+        print("[*] Deletion cancelled.")
+        return
+
+    ok = services.admin_delete_product(product_id)
+    print("[+] Product removed from catalog." if ok else "[-] Product not found.")
+    
+     
 if __name__ == "__main__":
     main()
