@@ -3,7 +3,10 @@ import db
 from pathlib import Path
 import tkinter as tk
 DEFAULT_CART_ID = 1  
-
+"""
+root = tk.Tk()
+root.geometry("800x600")
+"""
 def initialize_database_if_needed():
     """Helper to ensure the SQLite database is created and seeded if missing."""
     db_file = db.DB_PATH
@@ -72,6 +75,9 @@ def main():
         elif choice == "0":
             print("Exited. Goodbye.")
             break
+
+
+    #root.mainloop()
     return
 
 
@@ -296,7 +302,42 @@ def adminDeleteProduct():
 
     ok = services.admin_delete_product(product_id)
     print("[+] Product removed from catalog." if ok else "[-] Product not found.")
+
+"""
+def submit(entry, target_var, window):
+    val = entry.get().strip()
+    target_var.set(val)
+    window.destroy()
+
+def subwindow(title, label, prevwin):
+    sub_win = tk.Toplevel(prevwin)
+    sub_win.title(title)
+    sub_win.geometry("400x300")
+    for i in label:
+        tk.Label(sub_win, text=i).pack(side="top", pady=25)
+
+def inp_subwindow(title, label, target_var):
+    sub_win = tk.Toplevel(root)
+    sub_win.title(title)
+    sub_win.geometry("400x300")
+
+    sub_win.transient(root)
+    sub_win.grab_set()
+
     
-     
+
+    tk.Label(sub_win, text=label).pack(side="top", pady=10)
+
+    entry = tk.Entry(sub_win, width=30)
+    entry.pack(side="top", pady=20)
+    entry.focus_set()
+
+    submitting = lambda: submit(entry, target_var, sub_win)
+    tk.Button(sub_win, text="Enter", command=submitting).pack(pady=10)
+
+    
+    sub_win.wait_window()
+    return target_var.get().strip()
+"""   
 if __name__ == "__main__":
     main()
