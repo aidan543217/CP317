@@ -43,3 +43,47 @@ def get_product_details(product_id):
     product["availability_status"] = "In Stock" if product["in_stock"] else "Out of Stock"
     
     return product
+
+def admin_list_products():
+    """ADM-1: return all products with formatted price + status."""
+    products = db.get_all_products_admin()
+    for p in products:
+        p["price_formatted"] = f"${p['price_cents'] / 100:.2f}"
+        p["status"] = "Active" if p["is_active"] else "Inactive"
+    return products
+
+def admin_add_product(name, price, category_id, brand_id,
+                      stock=0, description="", install_instructions="",
+                      image_url=""):
+    """ADM-1: validate and create a product. price is in dollars."""
+    if not name.strip():
+        raise ValueError("Product name cannot be empty.")
+    if price < 0:
+        raise ValueError("Price cannot be negative.")
+    if stock < 0:
+        raise ValueError("Stock cannot be negative.")
+    return db.create_product(
+        name=name.strip(),
+        price_cents=int(price * 100),
+        category_id=category_id,
+        brand_id=brand_id,
+        stock=stock,
+        description=description,
+        install_instructions=install_instructions,
+        image_url=image_url or None,
+    )
+
+def admin_edit_product(product_id, **fields):
+    """ADM-1: validate & update a product. price may be passed in dollars."""
+    if "price" in fields:
+        p = fields.pop("price")
+        if p is None or p < 0:
+            raise ValueError("Price cannot be negative.")
+        fields["price_cents"] = int(round(p * 100))
+    if "stock" in fields and fields["stock"] < 0:
+        raise ValueError("Stock cannot be negative.")
+    return db.update_product(product_id, **fields)
+
+def admin_delete_product(product_id):
+    """ADM-1: delete a product."""
+    return db.delete_product(product_id)
