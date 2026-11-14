@@ -106,3 +106,30 @@ def admin_edit_product(product_id, **fields):
 def admin_delete_product(product_id):
     """ADM-1: delete a product."""
     return db.delete_product(product_id)
+
+def admin_daily_sales_report():
+    rows = db.get_daily_sales_summary()
+    report = []
+
+    for r in rows:
+        report.append({
+            "date": r["sale_date"] or "Unknown",
+            "orders": r["total_orders"],
+            "subtotal_formatted": f"${(r['subtotal_cents'] or 0) / 100:.2f}",
+            "tax_formatted": f"${(r['tax_cents'] or 0) / 100:.2f}",
+            "total_formatted": f"${(r['total_cents'] or 0) / 100:.2f}",
+        })
+    return report
+
+def admin_monthly_sales_report():
+    rows = db.get_monthly_sales_summary()
+    report = []
+    for r in rows:
+        report.append({
+            "month": r["sale_month"] or "Unknown",
+            "orders": r["total_orders"],
+            "subtotal_formatted": f"${(r['subtotal_cents'] or 0) / 100:.2f}",
+            "tax_formatted": f"${(r['tax_cents'] or 0) / 100:.2f}",
+            "total_formatted": f"${(r['total_cents'] or 0) / 100:.2f}",
+        })
+    return report

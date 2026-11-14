@@ -606,7 +606,36 @@ def adminOptions():
     tk.Button(sub_win, text="Add Products", command=adminAddProduct).pack(side="top", pady=10)
     tk.Button(sub_win, text="Edit Products", command=adminEditProduct).pack(side="top", pady=10)
     tk.Button(sub_win, text="Delete Products", command=adminDeleteProduct).pack(side="top", pady=10)
+    tk.Button(sub_win, text="Daily Sales Report (FR-9)", command=adminDailySales).pack(side="top", pady=10)
+    tk.Button(sub_win, text="Monthly Sales Report (FR-9)", command=adminMonthlySales).pack(side="top", pady=10)
     tk.Button(sub_win, text="Go Back", command=sub_win.destroy).pack(side="top", pady=10)
     
+def adminDailySales():
+    t1 = "--- Admin: Daily Sales Summary (FR-9) ---"
+    data = services.admin_daily_sales_report()
+    lines = []
+    if not data:
+        lines.append("No sales records found.")
+    else:
+        lines.append(f"{'Date':<15} | {'Orders':<8} | {'Subtotal':<10} | {'Tax (13%)':<10} | {'Total Sales':<12}")
+        lines.append("-" * 65)
+        for row in data:
+            lines.append(f"{row['date']:<15} | {row['orders']:<8} | {row['subtotal_formatted']:<10} | {row['tax_formatted']:<10} | {row['total_formatted']:<12}")
+    subwindow(t1, lines, root, 850, 600)
+
+def adminMonthlySales():
+    t1 = "--- Admin: Monthly Sales Summary (FR-9) ---"
+    data = services.admin_monthly_sales_report()
+    lines = []
+    if not data:
+        lines.append("No sales records found.")
+    else:
+        lines.append(f"{'Month':<12} | {'Orders':<8} | {'Subtotal':<10} | {'Tax (13%)':<10} | {'Total Sales':<12}")
+        lines.append("-" * 62)
+        for row in data:
+            lines.append(f"{row['month']:<12} | {row['orders']:<8} | {row['subtotal_formatted']:<10} | {row['tax_formatted']:<10} | {row['total_formatted']:<12}")
+    subwindow(t1, lines, root, 850, 600)
+
+
 if __name__ == "__main__":
     main()
