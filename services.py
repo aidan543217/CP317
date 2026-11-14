@@ -44,6 +44,25 @@ def get_product_details(product_id):
     
     return product
 
+def add_to_cart(cart_id, product_id, quantity):
+    db.add_to_cart(cart_id, product_id, quantity)
+
+    return
+
+def display_total(cart_id):
+    """UI-3: Query cart summary and display formatted currency values."""
+    
+
+    totals = db.get_cart_total(cart_id)
+
+    subtotal = totals["subtotal_cents"] / 100
+    tax = totals["tax_cents"] / 100
+    total = totals["total_cents"] / 100
+
+    
+    return subtotal, tax, total
+
+
 def admin_list_products():
     """ADM-1: return all products with formatted price + status."""
     products = db.get_all_products_admin()
