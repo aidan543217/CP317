@@ -2,10 +2,53 @@ import services
 import db
 from pathlib import Path
 import tkinter as tk
+import accessibility
+
+settings = accessibility.load_settings()
+colors = accessibility.get_theme_colors(settings)
 DEFAULT_CART_ID = 1  
 
 root = tk.Tk()
 root.geometry("800x600")
+root.configure(bg=colors["bg"])
+
+def apply_theme_to_widget(widget):
+    """Recursively apply current theme to a widget tree."""
+    try:
+        if isinstance(widget, tk.Label):
+            widget.config(bg=colors["bg"], fg=colors["fg"],
+                          font=accessibility.get_font(settings))
+        elif isinstance(widget, tk.Button):
+            widget.config(bg=colors["button_bg"], fg=colors["button_fg"],
+                          font=accessibility.get_font(settings),
+                          activebackground=colors["button_bg"],
+                          activeforeground=colors["button_fg"])
+        elif isinstance(widget, tk.Entry):
+            widget.config(bg=colors["entry_bg"], fg=colors["entry_fg"],
+                          font=accessibility.get_font(settings),
+                          insertbackground=colors["fg"])
+        elif isinstance(widget, (tk.Scale, tk.Radiobutton, tk.Checkbutton)):
+            widget.config(bg=colors["bg"], fg=colors["fg"],
+                          font=accessibility.get_font(settings),
+                          selectcolor=colors["button_bg"],
+                          activebackground=colors["bg"],
+                          activeforeground=colors["fg"],
+                          highlightbackground=colors["bg"])
+        elif isinstance(widget, (tk.Toplevel, tk.Frame)):
+            widget.config(bg=colors["bg"])
+    except tk.TclError:
+        pass
+    for child in widget.winfo_children():
+        apply_theme_to_widget(child)
+
+def apply_theme():
+    """Re-read settings and recolor all open windows."""
+    global colors
+    colors = accessibility.get_theme_colors(settings)
+    root.configure(bg=colors["bg"])
+    apply_theme_to_widget(root)
+    root.option_add("*Font", accessibility.get_font(settings))
+
 
 def initialize_database_if_needed():
     """Helper to ensure the SQLite database is created and seeded if missing."""
@@ -20,17 +63,154 @@ def initialize_database_if_needed():
             conn.executescript(schema_sql)
         print("[+] Database initialized successfully.")
 
+def accessibilitySettings():
+    """UI: Accessibility preferences (colors, font size, contrast)."""
+    win = tk.Toplevel(root)
+    win.title("Accessibility Settings")
+    win.geometry("600x500")
+    win.configure(bg=colors["bg"])
+
+    tk.Label(win, text="Accessibility Settings",
+             bg=colors["bg"], fg=colors["fg"],
+             font=accessibility.get_font(settings, 16, True)).pack(pady=15)
+
+    # --- Font size slider ---
+    tk.Label(win, text="Font Size", bg=colors["bg"], fg=colors["fg"],
+             font=accessibility.get_font(settings)).pack(pady=5)
+    font_var = tk.DoubleVar(value=settings["font_scale"])
+    font_slider = tk.Scale(win, from_=0.8, to=1.6, resolution=0.1,
+                           orient="horizontal", variable=font_var,
+                           bg=colors["bg"], fg=colors["fg"],
+                           highlightbackground=colors["bg"],
+                           troughcolor=colors["button_bg"], length=350)
+    font_slider.pack(pady=5)
+
+    # --- Theme selection ---
+    tk.Label(win, text="Color Theme", bg=colors["bg"], fg=colors["fg"],
+             font=accessibility.get_font(settings)).pack(pady=10)
+    theme_var = tk.StringVar(value=settings["theme"])
+    for label, value in [("Light", "light"), ("Dark", "dark")]:
+        tk.Radiobutton(win, text=label, variable=theme_var, value=value,
+                       bg=colors["bg"], fg=colors["fg"],
+                       selectcolor=colors["button_bg"],
+                       activebackground=colors["bg"],
+                       activeforeground=colors["fg"],
+                       font=accessibility.get_font(settings)).pack()
+
+    # --- High contrast toggle ---
+    contrast_var = tk.BooleanVar(value=settings["high_contrast"])
+    tk.Checkbutton(win, text="Enable High Contrast Mode",
+                   variable=contrast_var,
+                   bg=colors["bg"], fg=colors["fg"],
+                   selectcolor=colors["button_bg"],
+                   activebackground=colors["bg"],
+                   activeforeground=colors["fg"],
+                   font=accessibility.get_font(settings)).pack(pady=10)
+
+    def save_and_apply():
+        settings["font_scale"] = round(font_var.get(), 2)
+        settings["theme"] = theme_var.get()
+        settings["high_contrast"] = contrast_var.get()
+        accessibility.save_settings(settings)
+        apply_theme()
+        win.destroy()
+
+    tk.Button(win, text="Apply & Save", command=save_and_apply,
+              bg=colors["button_bg"], fg=colors["button_fg"],
+              font=accessibility.get_font(settings)).pack(pady=20)
+    tk.Button(win, text="Cancel", command=win.destroy,
+              bg=colors["button_bg"], fg=colors["button_fg"],
+              font=accessibility.get_font(settings)).pack()
+
+def guidedTour():
+    """Step-by-step walkthrough of the shopping flow."""
+    tour_steps = [
+        ("Welcome to Carco!",
+         "This guided tour will walk you through shopping on our site.\n"
+         "Click 'Next' to continue."),
+        ("Step 1: Browse Products",
+         "Use 'Browse & Filter Products' to view the catalog. You can filter\n"
+         "by category, brand, and maximum price."),
+        ("Step 2: Find Parts for Your Vehicle",
+         "Click 'Find Parts by Vehicle' and enter your car's make, model, and\n"
+         "year. We'll show only parts that fit."),
+        ("Step 3: View Product Details",
+         "Select 'View Product Details' and enter a product ID to see\n"
+         "descriptions, installation instructions, price, and fitment info."),
+        ("Step 4: Add to Cart",
+         "Use 'Add to cart' with a Product ID and quantity. You'll need\n"
+         "a cart ID — use 1 for the default cart."),
+        ("Step 5: Check Totals",
+         "Click 'View current total' to see your subtotal, HST (13%), and total."),
+        ("Step 6: Track Your Order",
+         "Use 'Track Order Status' with your order ID to see live\n"
+         "progress: Confirmed → Processing → Shipping → Delivered."),
+        ("You're all set!",
+         "You now know how to shop on Carco. Enjoy!\n"
+         "Tip: Visit 'Accessibility' anytime to adjust fonts and colors.")
+    ]
+
+    win = tk.Toplevel(root)
+    win.title("Guided Site Tour")
+    win.geometry("600x400")
+    win.configure(bg=colors["bg"])
+
+    title_var = tk.StringVar()
+    body_var = tk.StringVar()
+    step_var = tk.StringVar()
+
+    tk.Label(win, textvariable=step_var, bg=colors["bg"], fg=colors["fg"],
+             font=accessibility.get_font(settings, 9)).pack(pady=10)
+    tk.Label(win, textvariable=title_var, bg=colors["bg"], fg=colors["fg"],
+             font=accessibility.get_font(settings, 16, True)).pack(pady=5)
+    tk.Label(win, textvariable=body_var, bg=colors["bg"], fg=colors["fg"],
+             font=accessibility.get_font(settings), wraplength=520,
+             justify="left").pack(pady=15, padx=20)
+
+    index = tk.IntVar(value=0)
+    btn_frame = tk.Frame(win, bg=colors["bg"])
+    btn_frame.pack(side="bottom", pady=20)
+
+    def show_step(i):
+        t, body = tour_steps[i]
+        title_var.set(t)
+        body_var.set(body)
+        step_var.set(f"Step {i + 1} of {len(tour_steps)}")
+        prev_btn.config(state="normal" if i > 0 else "disabled")
+        next_btn.config(text="Finish" if i == len(tour_steps) - 1 else "Next")
+
+    def go_prev():
+        if index.get() > 0:
+            index.set(index.get() - 1)
+            show_step(index.get())
+
+    def go_next():
+        if index.get() < len(tour_steps) - 1:
+            index.set(index.get() + 1)
+            show_step(index.get())
+        else:
+            win.destroy()
+
+    prev_btn = tk.Button(btn_frame, text="Back", command=go_prev,
+                         bg=colors["button_bg"], fg=colors["button_fg"],
+                         font=accessibility.get_font(settings))
+    prev_btn.pack(side="left", padx=10)
+    next_btn = tk.Button(btn_frame, text="Next", command=go_next,
+                         bg=colors["button_bg"], fg=colors["button_fg"],
+                         font=accessibility.get_font(settings))
+    next_btn.pack(side="left", padx=10)
+
+    show_step(0)
 
 def main():
     initialize_database_if_needed()
     funcchoice = input("\nNewer (1) or older (2) functions : ").strip()
-            
+
     while funcchoice not in ["1", "2"]:
         print("[-] Invalid selection. Choose 1 or 2.")
         funcchoice = input("\nSelect an option (1 or 2): ").strip()
- 
+
     if funcchoice == "1":
-        
         header = (
             "=============================="
             "\n        CARCO E-STORE (CLI)     "
@@ -42,72 +222,20 @@ def main():
         B2 = tk.Button(root, text="2. Find Parts by Vehicle (FR-1)", command=findParts).pack(side="top", pady=5)
         B3 = tk.Button(root, text="3. View Product Details (FR-2)", command=prodView).pack(side="top", pady=5)
         B4 = tk.Button(root, text="4. Add to cart (FR-3)", command=addCart).pack(side="top", pady=5)
-        B5= tk.Button(root, text="5. View current total (FR-3)", command=disTotal).pack(side="top", pady=5)
+        B5 = tk.Button(root, text="5. View current total (FR-3)", command=disTotal).pack(side="top", pady=5)
         B_track = tk.Button(root, text="6. Track Order Status", command=trackOrder).pack(side="top", pady=5)
         B6 = tk.Button(root, text="7. Admin options (FR-8)", command=adminOptions).pack(side="top", pady=5)
+        B_tour = tk.Button(root, text="8. Guided Site Tour", command=guidedTour).pack(side="top", pady=5)
+        B_a11y = tk.Button(root, text="9. Accessibility Settings", command=accessibilitySettings).pack(side="top", pady=5)
         B7 = tk.Button(root, text="0. Exit", command=root.destroy).pack(side="top", pady=5)
+
+        apply_theme()          # <-- apply saved theme before showing window
         root.mainloop()
 
-  
     else:
-        
         print("\n==============================")
         print("      CARCO E-STORE (CLI)     ")
         print("==============================")
-    """
-    while True:
-        print("\n==============================")
-        print("      CARCO E-STORE (CLI)     ")
-        print("==============================")
-        print("1. Browse & Filter Products (FR-1)")
-        print("2. Find Parts by Vehicle (FR-1)")
-        print("3. View Product Details (FR-2)")
-        print("4. Add to cart (FR-3)")
-        print("5. View current total (FR-3)")
-        print("6. Admin: List All Products (FR-8)")
-        print("7. Admin: Add Product (FR-8)")
-        print("8. Admin: Edit Product (FR-8)")
-        print("9. Admin: Delete Product (FR-8)")
-        print("0. Exit")
-
-        
-        choice = input("\nSelect an option (0-9): ").strip()
-        
-        while choice not in ["1", "2", "3", "4", "5", "6", "7", "8", "9"]:
-            print("[-] Invalid selection. Choose 0-9.")
-            choice = input("\nSelect an option (0-9): ").strip()
-
-        if choice == "1":
-            browse()
-                
-        elif choice == "2":
-            findParts()
-                
-        elif choice == "3":
-            prodView()
-                
-        elif choice == "4":
-            addCart()
-
-        elif choice == "5":
-            disTotal()
-
-        elif choice == "6":
-            adminListProducts()
-
-        elif choice == "7":
-            adminAddProduct()
-
-        elif choice == "8":
-            adminEditProduct()
-
-        elif choice == "9":
-            adminDeleteProduct()
-
-        elif choice == "0":
-            print("Exited. Goodbye.")
-            break
-    """
 
     return
 
@@ -505,29 +633,36 @@ def subwindow(title: str, label: list[str], prevwin, xdim: int, ydim: int):
     sub_win = tk.Toplevel(prevwin)
     sub_win.title(title)
     sub_win.geometry(f"{xdim}x{ydim}")
+    sub_win.configure(bg=colors["bg"])
     for i in label:
-        tk.Label(sub_win, text=i).pack(side="top", pady=25)
+        tk.Label(sub_win, text=i,
+                 bg=colors["bg"], fg=colors["fg"],
+                 font=accessibility.get_font(settings),
+                 wraplength=xdim - 40, justify="left").pack(side="top", pady=25)
 
 def inp_subwindow(title: str, label: str, target_var: tk.StringVar, xdim: int, ydim: int):
     sub_win = tk.Toplevel(root)
     sub_win.title(title)
     sub_win.geometry(f"{xdim}x{ydim}")
-
+    sub_win.configure(bg=colors["bg"])
     sub_win.transient(root)
     sub_win.grab_set()
 
-    
+    tk.Label(sub_win, text=label, bg=colors["bg"], fg=colors["fg"],
+             font=accessibility.get_font(settings)).pack(side="top", pady=10)
 
-    tk.Label(sub_win, text=label).pack(side="top", pady=10)
-
-    entry = tk.Entry(sub_win, width=30)
+    entry = tk.Entry(sub_win, width=30,
+                     bg=colors["entry_bg"], fg=colors["entry_fg"],
+                     insertbackground=colors["fg"],
+                     font=accessibility.get_font(settings))
     entry.pack(side="top", pady=20)
     entry.focus_set()
 
     submitting = lambda: submit(entry, target_var, sub_win)
-    tk.Button(sub_win, text="Enter", command=submitting).pack(pady=10)
+    tk.Button(sub_win, text="Enter", command=submitting,
+              bg=colors["button_bg"], fg=colors["button_fg"],
+              font=accessibility.get_font(settings)).pack(pady=10)
 
-    
     sub_win.wait_window()
     return target_var.get().strip()
 
@@ -549,10 +684,10 @@ def trackOrder():
         subwindow(t1, [f"[-] Order #{order_id} not found."], root, 800, 600)
         return
 
-    # Build a custom subwindow so the corner button can dynamically update the label
     track_win = tk.Toplevel(root)
     track_win.title(f"Order #{order_id} Tracking")
     track_win.geometry("800x600")
+    track_win.configure(bg=colors["bg"])
 
     stages = ["Confirmed", "Processing", "Shipping", "Delivered"]
     status_var = tk.StringVar()
@@ -560,11 +695,9 @@ def trackOrder():
 
     def refresh_display(current_status: str):
         status_var.set(f"Order #{order_id} — Current Status: {current_status.upper()}")
-        # Build a visual progress bar string: [✓] Order Sent -> [●] Processing -> [ ] Shipping...
-        visual_steps = []
         norm_stages = [s.lower() for s in stages]
         curr_idx = norm_stages.index(current_status.lower()) if current_status.lower() in norm_stages else -1
-
+        visual_steps = []
         for idx, stage in enumerate(stages):
             if idx < curr_idx:
                 visual_steps.append(f"[✓] {stage}")
@@ -576,8 +709,13 @@ def trackOrder():
 
     refresh_display(order["status"])
 
-    tk.Label(track_win, textvariable=status_var, font=("Arial", 14, "bold")).pack(side="top", pady=30)
-    tk.Label(track_win, textvariable=progress_var, font=("Arial", 10), wraplength=750).pack(side="top", pady=20)
+    tk.Label(track_win, textvariable=status_var,
+             bg=colors["bg"], fg=colors["fg"],
+             font=accessibility.get_font(settings, 14, True)).pack(side="top", pady=30)
+    tk.Label(track_win, textvariable=progress_var,
+             bg=colors["bg"], fg=colors["fg"],
+             font=accessibility.get_font(settings, 10),
+             wraplength=750).pack(side="top", pady=20)
 
     def on_advance_click():
         new_status = services.advance_order_status(order_id)
@@ -586,11 +724,12 @@ def trackOrder():
             if new_status == "Delivered":
                 advance_btn.config(state="disabled", text="Package Delivered")
 
-    # Bottom-right corner button to simulate package movement
     advance_btn = tk.Button(
         track_win,
         text="Simulate Next Delivery Stage ➔",
-        command=on_advance_click
+        command=on_advance_click,
+        bg=colors["button_bg"], fg=colors["button_fg"],
+        font=accessibility.get_font(settings),
     )
     advance_btn.place(relx=1.0, rely=1.0, anchor="se", x=-20, y=-20)
 
@@ -600,15 +739,21 @@ def trackOrder():
 def adminOptions():
     sub_win = tk.Toplevel(root)
     sub_win.title("Admin Options")
-    sub_win.geometry(f"800x600")
+    sub_win.geometry("800x600")
+    sub_win.configure(bg=colors["bg"])
 
-    tk.Button(sub_win, text="List Products", command=adminListProducts).pack(side="top", pady=10)
-    tk.Button(sub_win, text="Add Products", command=adminAddProduct).pack(side="top", pady=10)
-    tk.Button(sub_win, text="Edit Products", command=adminEditProduct).pack(side="top", pady=10)
-    tk.Button(sub_win, text="Delete Products", command=adminDeleteProduct).pack(side="top", pady=10)
-    tk.Button(sub_win, text="Daily Sales Report (FR-9)", command=adminDailySales).pack(side="top", pady=10)
-    tk.Button(sub_win, text="Monthly Sales Report (FR-9)", command=adminMonthlySales).pack(side="top", pady=10)
-    tk.Button(sub_win, text="Go Back", command=sub_win.destroy).pack(side="top", pady=10)
+    for text, cmd in [
+        ("List Products", adminListProducts),
+        ("Add Products", adminAddProduct),
+        ("Edit Products", adminEditProduct),
+        ("Delete Products", adminDeleteProduct),
+        ("Daily Sales Report (FR-9)", adminDailySales),
+        ("Monthly Sales Report (FR-9)", adminMonthlySales),
+        ("Go Back", sub_win.destroy),
+    ]:
+        tk.Button(sub_win, text=text, command=cmd,
+                  bg=colors["button_bg"], fg=colors["button_fg"],
+                  font=accessibility.get_font(settings)).pack(side="top", pady=10)
     
 def adminDailySales():
     t1 = "--- Admin: Daily Sales Summary (FR-9) ---"
