@@ -44,6 +44,25 @@ def get_product_details(product_id):
     
     return product
 
+def add_to_cart(cart_id, product_id, quantity):
+    db.add_to_cart(cart_id, product_id, quantity)
+
+    return
+
+def display_total(cart_id):
+    """UI-3: Query cart summary and display formatted currency values."""
+    
+
+    totals = db.get_cart_total(cart_id)
+
+    subtotal = totals["subtotal_cents"] / 100
+    tax = totals["tax_cents"] / 100
+    total = totals["total_cents"] / 100
+
+    
+    return subtotal, tax, total
+
+
 def admin_list_products():
     """ADM-1: return all products with formatted price + status."""
     products = db.get_all_products_admin()
@@ -87,3 +106,30 @@ def admin_edit_product(product_id, **fields):
 def admin_delete_product(product_id):
     """ADM-1: delete a product."""
     return db.delete_product(product_id)
+
+def admin_daily_sales_report():
+    rows = db.get_daily_sales_summary()
+    report = []
+
+    for r in rows:
+        report.append({
+            "date": r["sale_date"] or "Unknown",
+            "orders": r["total_orders"],
+            "subtotal_formatted": f"${(r['subtotal_cents'] or 0) / 100:.2f}",
+            "tax_formatted": f"${(r['tax_cents'] or 0) / 100:.2f}",
+            "total_formatted": f"${(r['total_cents'] or 0) / 100:.2f}",
+        })
+    return report
+
+def admin_monthly_sales_report():
+    rows = db.get_monthly_sales_summary()
+    report = []
+    for r in rows:
+        report.append({
+            "month": r["sale_month"] or "Unknown",
+            "orders": r["total_orders"],
+            "subtotal_formatted": f"${(r['subtotal_cents'] or 0) / 100:.2f}",
+            "tax_formatted": f"${(r['tax_cents'] or 0) / 100:.2f}",
+            "total_formatted": f"${(r['total_cents'] or 0) / 100:.2f}",
+        })
+    return report

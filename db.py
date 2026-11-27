@@ -142,3 +142,34 @@ def get_all_products_admin():
     """
     with get_connection() as conn:
         return [dict(r) for r in conn.execute(sql)]
+
+def get_daily_sales_summary():
+    sql = """
+        SELECT 
+            DATE(created_at) AS sale_date,
+            COUNT(order_id) AS total_orders,
+            SUM(subtotal_cents) AS subtotal_cents,
+            SUM(tax_cents) AS tax_cents,
+            SUM(total_cents) AS total_cents
+        FROM orders
+        GROUP BY DATE(created_at)
+        ORDER BY sale_date DESC
+    """
+    with get_connection() as conn:
+        return [dict(r) for r in conn.execute(sql)]
+
+
+def get_monthly_sales_summary():
+    sql = """
+        SELECT 
+            strftime('%Y-%m', created_at) AS sale_month,
+            COUNT(order_id) AS total_orders,
+            SUM(subtotal_cents) AS subtotal_cents,
+            SUM(tax_cents) AS tax_cents,
+            SUM(total_cents) AS total_cents
+        FROM orders
+        GROUP BY strftime('%Y-%m', created_at)
+        ORDER BY sale_month DESC
+    """
+    with get_connection() as conn:
+        return [dict(r) for r in conn.execute(sql)]
