@@ -8,6 +8,10 @@ settings = accessibility.load_settings()
 colors = accessibility.get_theme_colors(settings)
 DEFAULT_CART_ID = 1  
 
+ADMIN_PASSWORD = "cp317carco"
+admin_attempts_left = 3
+admin_btn = None
+
 root = tk.Tk()
 root.geometry("800x600")
 root.configure(bg=colors["bg"])
@@ -203,6 +207,7 @@ def guidedTour():
     show_step(0)
 
 def main():
+    global admin_btn
     initialize_database_if_needed()
     funcchoice = input("\nNewer (1) or older (2) functions : ").strip()
 
@@ -224,7 +229,8 @@ def main():
         B4 = tk.Button(root, text="4. Add to cart (FR-3)", command=addCart).pack(side="top", pady=5)
         B5 = tk.Button(root, text="5. View current total (FR-3)", command=disTotal).pack(side="top", pady=5)
         B_track = tk.Button(root, text="6. Track Order Status", command=trackOrder).pack(side="top", pady=5)
-        B6 = tk.Button(root, text="7. Admin options (FR-8)", command=adminOptions).pack(side="top", pady=5)
+        Badmin_btn = tk.Button(root, text="7. Admin options (FR-8)", command=adminOptions)
+        admin_btn.pack(side="top", pady=5)
         B_tour = tk.Button(root, text="8. Guided Site Tour", command=guidedTour).pack(side="top", pady=5)
         B_a11y = tk.Button(root, text="9. Accessibility Settings", command=accessibilitySettings).pack(side="top", pady=5)
         B7 = tk.Button(root, text="0. Exit", command=root.destroy).pack(side="top", pady=5)
@@ -640,7 +646,7 @@ def subwindow(title: str, label: list[str], prevwin, xdim: int, ydim: int):
                  font=accessibility.get_font(settings),
                  wraplength=xdim - 40, justify="left").pack(side="top", pady=25)
 
-def inp_subwindow(title: str, label: str, target_var: tk.StringVar, xdim: int, ydim: int):
+def inp_subwindow(title: str, label: str, target_var: tk.StringVar, xdim: int, ydim: int, show: str = ""):
     sub_win = tk.Toplevel(root)
     sub_win.title(title)
     sub_win.geometry(f"{xdim}x{ydim}")
@@ -651,7 +657,7 @@ def inp_subwindow(title: str, label: str, target_var: tk.StringVar, xdim: int, y
     tk.Label(sub_win, text=label, bg=colors["bg"], fg=colors["fg"],
              font=accessibility.get_font(settings)).pack(side="top", pady=10)
 
-    entry = tk.Entry(sub_win, width=30,
+    entry = tk.Entry(sub_win, width=30, show=show,
                      bg=colors["entry_bg"], fg=colors["entry_fg"],
                      insertbackground=colors["fg"],
                      font=accessibility.get_font(settings))
@@ -737,6 +743,28 @@ def trackOrder():
         advance_btn.config(state="disabled", text="Package Delivered")
 
 def adminOptions():
+    global admin_attempts_left
+    if admin_attempts_left <= 0:
+        return
+
+    prompt = f"Enter Admin Password ({admin_attempts_left} attempt(s) left):"
+    while admin_attempts_left > 0:
+        pw_var = tk.StringVar(value="")
+        entered = inp_subwindow("Admin Login", prompt, pw_var, 450, 220, show="*")
+
+        if entered == ADMIN_PASSWORD:
+            admin_attempts_left = 3
+            break
+
+        admin_attempts_left -= 1
+        if admin_attempts_left == 0:
+            if admin_btn is not None:
+                admin_btn.destroy()
+            subwindow("Access Denied", ["[-] Too many failed attempts. Admin access disabled."], root, 450, 200)
+            return
+
+        prompt = f"[-] Incorrect password. Try again ({admin_attempts_left} attempt(s) left):"
+
     sub_win = tk.Toplevel(root)
     sub_win.title("Admin Options")
     sub_win.geometry("800x600")
