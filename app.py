@@ -230,7 +230,7 @@ def main():
         B5 = tk.Button(root, text="5. View current total (FR-3)", command=disTotal).pack(side="top", pady=5)
         B_track = tk.Button(root, text="6. Track Order Status", command=trackOrder).pack(side="top", pady=5)
         Badmin_btn = tk.Button(root, text="7. Admin options (FR-8)", command=adminOptions)
-        admin_btn.pack(side="top", pady=5)
+        Badmin_btn.pack(side="top", pady=5)
         B_tour = tk.Button(root, text="8. Guided Site Tour", command=guidedTour).pack(side="top", pady=5)
         B_a11y = tk.Button(root, text="9. Accessibility Settings", command=accessibilitySettings).pack(side="top", pady=5)
         B7 = tk.Button(root, text="0. Exit", command=root.destroy).pack(side="top", pady=5)
