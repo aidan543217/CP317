@@ -84,9 +84,11 @@ def get_cart_total(cart_id):
     tax = round(subtotal * TAX_RATE)
     return {"subtotal_cents": subtotal, "tax_cents": tax, "total_cents": subtotal + tax}
 
-def _next_id(conn,table,pk_col):
+
+def _next_id(conn, table, pk_col):
     row = conn.execute(f"SELECT COALESCE(MAX({pk_col}), 0) + 1 AS n FROM {table}").fetchone()
     return row["n"]
+
 
 def create_product(name, price_cents, category_id, brand_id,
                    stock=0, description=None, install_instructions=None,
@@ -102,6 +104,7 @@ def create_product(name, price_cents, category_id, brand_id,
             (new_id, name, price_cents, category_id, brand_id, stock,
              description, install_instructions, image_url, is_active))
         return new_id
+
 
 def update_product(product_id, **fields):
     """ADM-1: update any subset of product columns."""
@@ -142,6 +145,7 @@ def get_all_products_admin():
     """
     with get_connection() as conn:
         return [dict(r) for r in conn.execute(sql)]
+
 
 def get_daily_sales_summary():
     sql = """
